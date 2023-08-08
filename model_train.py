@@ -24,11 +24,11 @@ from tensorboardX import SummaryWriter
 # Custom classes
 sys.path.append('./modules')
 from datatools import *
-from losstools import loss_function
+from losstools import loss_function_wrapper
 from models import Hourglass
 
 
-# In[2]:
+# In[5]:
 
 
 """
@@ -45,7 +45,7 @@ lr = 5e-4
 batch_size = 25
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = Hourglass(depth=2).to(device)
-loss_func = loss_function('gcel')
+loss_func = loss_function_wrapper('gcel')
 transform = A.Compose([
     A.RandomRotate90(p=1),
     A.Transpose(p=0.5),
@@ -65,7 +65,7 @@ if write:
     writer = SummaryWriter('./{}/runs/{}'.format(folder, model_name))
 
 
-# In[3]:
+# In[6]:
 
 
 """
@@ -90,7 +90,7 @@ train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=ba
 val_loader = torch.utils.data.DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
 
-# In[4]:
+# In[ ]:
 
 
 for epoch in tqdm(range(int(epochs))):
@@ -142,36 +142,6 @@ for epoch in tqdm(range(int(epochs))):
 if write:
     writer.flush()
     writer.close()
-
-
-# In[10]:
-
-
-for epoch in tqdm([0]):
-    """Training"""
-
-    for x, y in train_loader:
-        # transform data and load back into torch Tensors
-        x, y = transform_data(x, y, transform)
-
-        # send to device
-        x = x.to(device)
-        y = y.to(device)
-
-        print(x.shape, y.shape)
-
-        
-    """Validation"""
-    with torch.no_grad():
-        for x, y in val_loader:
-            # transform data
-            x, y = transform_data(x, y, transform)
-
-            # send to device
-            x = x.to(device)
-            y = y.to(device)
-
-            print(x.shape, y.shape)
 
 
 # In[ ]:

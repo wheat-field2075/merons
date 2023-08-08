@@ -16,7 +16,6 @@ Args:
 Returns:
     loss: the loss, which may be an entire Tensor or reduced to a single number
 ############################## """
-
 def binary_cross_entropy_loss(pred, target, reduction='mean', epsilon=2e-7):
     assert reduction in ['mean', 'none']
     
@@ -41,7 +40,6 @@ Args:
 Returns:
     loss: the loss, which may be an entire Tensor or reduced to a single number
 ############################## """
-
 def generalized_cross_entropy_loss(pred, target, beta=4, reduction='mean', epsilon=2e-7):
     assert reduction in ['mean', 'none']
     
@@ -65,7 +63,6 @@ Args:
 Returns:
     loss: the loss, which may be an entire Tensor or reduced to a single number
 ############################## """
-
 def binary_focal_loss(pred, target, gamma=4, reduction='mean'):
     assert reduction in ['mean', 'none']
     
@@ -92,7 +89,6 @@ Args:
 Returns:
     loss: the loss, which may be an entire Tensor or reduced to a single number
 ############################## """
-
 def generalized_focal_loss(pred, target, gamma=4, reduction='mean'):
     assert reduction in ['mean', 'none']
     
@@ -127,7 +123,6 @@ Args:
 Returns:
     *unnamed*: the loss according to the predetermind loss function
 ############################## """
-
 class loss_function_wrapper():
     def __init__(self, name, **kargs):
         assert name in ['bcel', 'gcel', 'bfl', 'gfl']
