@@ -104,7 +104,7 @@ def create_data(root_dir, parent_dir, json_name='annotations.json', sigma=15, di
     mask_list = []
     for image_id, image_name in json_images:
         image = Image.open(os.path.join(parent_dir, 'images', image_name))
-        mask = np.zeros(image.size)
+        mask = np.zeros(image.size[::-1])
         mask_list.append([image_id, image_name, mask])
 
     # iterate through bboxes and add to relevant masks
@@ -132,6 +132,8 @@ Args:
     parent_dir: the path to the temporary dataset's parent directory
     json_name: the name of the file containing annotations. should be in (plain) COCO format.
         Default: annotations.json
+    full_size: whether to use the whole image/mask as an input/target, respectively. ignores
+        patch_size if True. Default: False
     patch_size: the size of each patch. Default: 200
     create_grid: seperate each sample into evenly spaced grids. Default: True
     grid_step: the distance between each patch. tied to make_grid. Default: 100
@@ -139,11 +141,13 @@ Args:
 ############################## """
 def create_patches(parent_dir,
                 json_name='annotations.json',
+                full_size=False,
                 patch_size=200,
                 create_grid=True,
                 grid_step=100,
                 create_centered=False):
-    assert True in [create_grid, create_centered]
+    if full_size == False:
+        assert True in [create_grid, create_centered]
 
     # load image annotation data
     json_path = os.path.join(parent_dir, 'images', json_name)
@@ -155,6 +159,15 @@ def create_patches(parent_dir,
     for image_id, image_name in images:
         os.mkdir(os.path.join(parent_dir, 'image_patches', image_name))
         os.mkdir(os.path.join(parent_dir, 'mask_patches', image_name))
+
+    # copy entire image if full_size
+    if full_size:
+        for image_name in sorted(os.listdir(os.path.join(parent_dir, 'images'))):
+            shutil.copyfile(os.path.join(parent_dir, 'images', image_name),
+                            os.path.join(parent_dir, 'image_patches', image_name, image_name))
+            shutil.copyfile(os.path.join(parent_dir, 'masks', image_name),
+                            os.path.join(parent_dir, 'mask_patches', image_name, image_name))
+        return
 
     # create grid samples
     if create_grid:
@@ -216,6 +229,8 @@ Args:
         json_name: the name of the file containing annotations. should be in (plain) COCO
             format. Default: annotations.json
     - create_patches
+        full_size: whether to use the whole image/mask as an input/target, respectively. ignores
+        patch_size if True. Default: False
         patch_size: the size of each patch. Default: 200
         create_grid: seperate each sample into evenly spaced grids. Default: True
         grid_step: the distance between each patch. tied to make_grid. Default: 100
@@ -229,6 +244,7 @@ def make_dataset(root_dir,
                 json_name='annotations.json',
                 sigma=15,
                 dim=71,
+                full_size=False,
                 patch_size=200,
                 create_grid=True,
                 grid_step=100,
@@ -237,6 +253,7 @@ def make_dataset(root_dir,
     create_data(root_dir, parent_dir, json_name=json_name, sigma=sigma, dim=dim)
     create_patches(parent_dir,
                   json_name=json_name,
+                  full_size=full_size,
                   patch_size=patch_size,
                   create_grid=create_grid,
                   grid_step=grid_step,

@@ -1,3 +1,7 @@
+### 2023/08/14: model_testing ###
+- some edits to model_testing for AP calculations
+- minor bugfixes
+
 ### 2023/08/08: fall cleaning
 - condensed many files in modules and added a little bit of documentation on how to use
 - made an actually presentable model_testing notebook
@@ -14,7 +18,7 @@
 
 ### 2023/05/22: dihedral4
 - added augmentations for dihedral-4
-- loss on val-data is noticably lower, but fails to yield noticable improvments on the entire patch
+- loss on val-data is noticably lower, but fails to yield noticable improvements on the entire patch
 
 ### 2023/03/17: negative samples and dataset_process
 - should be dated as 2023/05/17
