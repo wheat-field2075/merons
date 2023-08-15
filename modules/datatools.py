@@ -354,11 +354,11 @@ def transform_data(images, masks, transform):
     if len(masks.shape) == 3:
         masks = np.expand_dims(masks, 3)
 
-    # iteratively transform and replace along the batch dimension
+    # iteratively transform, normalize, and replace along the batch dimension
     for batch_index, image, mask in zip(range(images.shape[0]), images, masks):
         transformed = transform(image=image, mask=mask)
-        images[batch_index] = transformed['image']
-        masks[batch_index] = transformed['mask']
+        images[batch_index] = transformed['image'] / 255
+        masks[batch_index] = transformed['mask'] / 255
         
     # ensure that data is of correct type and shape
     images, masks = np.moveaxis(images, -1, 1), np.moveaxis(masks, -1, 1)
