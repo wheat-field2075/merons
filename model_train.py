@@ -28,7 +28,7 @@ from losstools import loss_function_wrapper
 from models import Hourglass
 
 
-# In[5]:
+# In[2]:
 
 
 """
@@ -40,11 +40,11 @@ patch_size = 200
 sigma = 9
 
 # training hyperparameters
-epochs = 0.5e3
+epochs = 2.5e3
 lr = 5e-4
 batch_size = 25
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = Hourglass(depth=2).to(device)
+model = Hourglass(depth=1).to(device)
 loss_func = loss_function_wrapper('gcel')
 transform = A.Compose([
     A.RandomRotate90(p=1),
@@ -54,18 +54,17 @@ transform = A.Compose([
 ])
 opt = torch.optim.Adam(model.parameters(), lr=lr)
 
-
 # performance logger parameters
 write = False
 save_model = False
 if write or save_model:
-    folder = '2023.08.02 model_depth'
-    model_name = 'depth={}, gce'.format(3)
+    folder = './active/2023.08.15 model_depth'
+    model_name = 'depth={}, gce'.format(1)
 if write:
     writer = SummaryWriter('./{}/runs/{}'.format(folder, model_name))
 
 
-# In[6]:
+# In[3]:
 
 
 """
@@ -90,10 +89,10 @@ train_loader = torch.utils.data.DataLoader(train_ds, shuffle=True, batch_size=ba
 val_loader = torch.utils.data.DataLoader(val_ds, shuffle=False, batch_size=batch_size)
 
 
-# In[ ]:
+# In[4]:
 
 
-for epoch in tqdm(range(int(epochs))):
+for epoch in range(int(epochs)):
     """Training"""
     model.train()
     total_train_loss = 0
@@ -124,6 +123,28 @@ for epoch in tqdm(range(int(epochs))):
             pred = model(x)
             loss = loss_func(pred, y)
             total_val_loss += loss
+            
+    # calculate precision and recall
+    average_precision = 0
+    average_recall = 0
+    
+    for image_name in exclude_list:
+        image_path = os.path.join(parent_dir, 'images', image_name)
+        mask_path = os.path.join(parent_dir, 'masks', image_name)
+        
+        val_image = np.array(Image.open(image_path).convert('L')).astype(np.float32)
+        val_image /= val_image.max()
+        val_mask = np.array(Image.open(mask_path).convert('L')).astype(np.float32)
+        val_mask /= val_mask.max()
+        pred_mask = np.zeros(val_mask.shape)
+        
+        t = get_pr_stats(model, val_image, val_mask, patch_size, device)
+        average_precision += t[0]
+        average_recall += t[1]
+        print("t: {}".format(t))
+        
+    average_precision /= len(exclude_list)
+    average_recall /= len(exclude_list)
 
     # calculate average loss from aggregate
     avg_train_loss = total_train_loss / len(train_loader)
@@ -133,8 +154,10 @@ for epoch in tqdm(range(int(epochs))):
     if write:
         writer.add_scalar('train_loss', avg_train_loss, epoch)
         writer.add_scalar('val_loss', avg_val_loss, epoch)
+        writer.add_scalar('average_precision', average_precision, epoch)
+        writer.add_scalar('average_recall', average_recall, epoch)
     if save_model:
-        if (epoch + 1) % 100 == 0:
+        if (epoch + 1) % 50 == 0:
             model_param_path = './{}/model_saves/{}, epoch={:05}.pth'.format(folder, model_name, epoch + 1)
             torch.save(model.state_dict(), model_param_path)
 
@@ -142,10 +165,4 @@ for epoch in tqdm(range(int(epochs))):
 if write:
     writer.flush()
     writer.close()
-
-
-# In[ ]:
-
-
-
 

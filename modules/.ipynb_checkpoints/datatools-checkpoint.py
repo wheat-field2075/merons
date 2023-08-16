@@ -4,6 +4,7 @@ parameters in between runs, and transforming data
 """
 
 import os
+import cv2
 import json
 import torch
 import shutil
@@ -239,7 +240,6 @@ Args:
 Returns:
     parent_path: the path to the temporary dataset's parent directory
 ############################## """
-
 def make_dataset(root_dir,
                 json_name='annotations.json',
                 sigma=15,
@@ -272,8 +272,6 @@ Returns:
     train_list: a list of image-mask pairs, deisgnated as training data
     val_list: a list of image-mask pairs, deisgnated as validation data
 ############################## """
-
-""" ############################## """
 def load_temp_dataset(parent_dir, exclude_list):
     # prepare directory paths
     print('##### Loading dataset #####')
@@ -300,6 +298,7 @@ def load_temp_dataset(parent_dir, exclude_list):
         print('done')
 
     return train_list, val_list
+""" ############################## """
 
 """ ##############################
 MapDataset: a simple map-style class built upon the abstract class torch.utils.data.Dataset
@@ -330,7 +329,7 @@ class MapDataset(torch.utils.data.Dataset):
         return self.image_mask_seq[index]
 """ ############################## """
 
-"""
+""" ##############################
 transform_data: apply the same transformation to batched images and masks. should be used with
     albumentations
 
@@ -341,27 +340,114 @@ Args:
 Returns:
     images: a batched set of images as pytorch Tensors and with shape (B, C, H, W)
     masks: a batched set of masks as pytorch Tensors and with shape (B, C, H, W)
-"""
-
+############################## """
 def transform_data(images, masks, transform):
     # ensure that data is of correct type and shape
     if type(images) != np.ndarray:
-        images = np.array(images)
+        images = np.array(images).astype(np.float32)
     if type(masks) != np.ndarray:
-        masks = np.array(masks)
+        masks = np.array(masks).astype(np.float32)
     if len(images.shape) == 3:
         images = np.expand_dims(images, 3)
     if len(masks.shape) == 3:
         masks = np.expand_dims(masks, 3)
 
-    # iteratively transform and replace along the batch dimension
+    # iteratively transform, normalize, and replace along the batch dimension
     for batch_index, image, mask in zip(range(images.shape[0]), images, masks):
         transformed = transform(image=image, mask=mask)
-        images[batch_index] = transformed['image']
-        masks[batch_index] = transformed['mask']
+        images[batch_index] = transformed['image'] / 255
+        masks[batch_index] = transformed['mask'] / 255
         
     # ensure that data is of correct type and shape
     images, masks = np.moveaxis(images, -1, 1), np.moveaxis(masks, -1, 1)
     images, masks = torch.Tensor(images), torch.Tensor(masks)
     return images, masks
+""" ######################### """
+
+""" ##############################
+write_to_pred: helper function for get_pr_stats. writes predicted patches into a mask
+
+Args:
+    y: the y coordinate of the top-left corner
+    x: the x coordinate of the top-left corner
+    model: the model to evaluate
+    source: the source image
+    prediction: the predicted mask to write into
+    patch_size: the relevant patch size
+    device: the device to send Tensors to
+############################## """
+def write_to_pred(y, x, model, source, prediction, patch_size, device):
+    with torch.no_grad():
+        model.eval()
+        source_patch = np.expand_dims(source[y:y+patch_size, x:x+patch_size], [0, 1])
+        pred_patch = model(torch.Tensor(source_patch).to(device) / 255)
+        pred_patch = pred_patch.detach().cpu().numpy().squeeze()
+        prediction[y:y+patch_size, x:x+patch_size] = np.maximum(prediction[y:y+patch_size, x:x+patch_size],
+                                                               pred_patch)
+""" ######################### """
+        
+""" ##############################
+get_pr_stats: returns the precision and accuracy of a model on a given validation image
+
+Args:
+    model: the model to be evaluated
+    source: the source image
+    target: the target mask
+    patch_size: the relevant patch size
+    devcie: the device to send Tensors to
+    thresh: the minimum size to consider components in source/target as detected center as opposed
+        to artifacts. Default: 400
+Returns:
+    precision: the precision of the model
+    recall: the recall of the model
+############################## """
+def get_pr_stats(model, source, target, patch_size, device, thresh=400):
+    prediction = np.zeros(target.shape)
+    for y, x in itertools.product(range(0, target.shape[0] - patch_size, 100),
+                                 range(0, target.shape[1] - patch_size, 100)):
+        write_to_pred(y, x, model, source, prediction, patch_size, device)
+
+    y = target.shape[0] - patch_size
+    for x in range(0, target.shape[1] - patch_size, 100):
+        write_to_pred(y, x, model, source, prediction, patch_size, device)
+
+    x = target.shape[0] - patch_size
+    for y in range(0, target.shape[0] - patch_size, 100):
+        write_to_pred(y, x, model, source, prediction, patch_size, device)
+
+    y, x = (target.shape[0] - patch_size, target.shape[1] - patch_size)
+    write_to_pred(y, x, model, source, prediction, patch_size, device)
+    
+    target = target >= 0.1
+    prediction = prediction >= 0.1
+    tp_diff = ((target == 1) * (prediction == 1)).astype(np.uint8)
+    fp_diff = ((target == 0) * (prediction == 1)).astype(np.uint8)
+    fn_diff = ((target == 1) * (prediction == 0)).astype(np.uint8)
+
+    for x, y, width, height, area in cv2.connectedComponentsWithStats(tp_diff, connectivity=4)[2][1:]:
+        if area <= thresh:
+            tp_diff[y:y+height, x:x+width] = 0
+    for x, y, width, height, area in cv2.connectedComponentsWithStats(fp_diff, connectivity=4)[2][1:]:
+        if area <= thresh:
+            fp_diff[y:y+height, x:x+width] = 0
+    for x, y, width, height, area in cv2.connectedComponentsWithStats(fn_diff, connectivity=4)[2][1:]:
+        if area <= thresh or 0 in fn_diff[int(y+height//(1/0.45)):int(y+height//(1/0.55)),
+                                         int(x+width//(1/0.45)):int(x+width//(1/0.55))]:
+            fn_diff[y:y+height, x:x+width] = 0
+    
+    tp_count = tp_diff.sum()
+    fp_count = fp_diff.sum()
+    fn_count = fn_diff.sum()
+
+    if tp_count + fp_count == 0:
+        precision = 0
+    else:
+        precision = tp_count / (tp_count + fp_count)
+        
+    if tp_count + fn_count == 0:
+        recall = 0
+    else:
+        recall = tp_count / (tp_count + fn_count)
+
+    return precision, recall, tp_count, fp_count, fn_count, tp_diff.max(), fp_diff.max(), fn_diff.max()
 """ ############################## """
