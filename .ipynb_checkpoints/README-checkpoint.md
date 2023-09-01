@@ -1,3 +1,18 @@
+### message to Steven
+Hey there Steven, cleaned up the code a bit and this should be able to run. Input data and annotations should be put into ./dataset; however, once you've completed annotations for anti-merons, it'd be wise to put that into a new folder. To train a model, check out model_testing.ipynb. To run longer training sessions, convert model_testing.ipynb to a Python file and submitting a slurm job.
+
+For next steps, consider adding dropout layers in training. In addition, it'd be nice to develop an anti-meron detector and developing a tool to visualize when merons turn into anti-merons (and vice versa). For annotations, try using the track feature in cvat.ai. Professor Wei recommended https://streamlit.io/ to package the final result nicely.
+
+Lemme know if you'd need help or some explanations/advice, and happy coding!
+
+### 2023/08/08: fall cleaning 2
+- split up the datatools file into numerous datatool* files to make them more navigatable
+    - datatools0: basic functions to open JPEG images as numpy files
+    - datatools1: functions to create a temporary dataset from a root directory with images and annotations
+    - datatools2: a function to apply transformations to a dataset and a custom Dataset class
+    - datatools3: functions to calculate precision and recall on an image; treats image as a collection of input patches and 
+        stitches the resulting prediction patches together
+
 ### 2023/08/14: model_testing ###
 - some edits to model_testing for AP calculations
 - minor bugfixes
