@@ -56,7 +56,7 @@ class DownSample(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             DoubleConv(in_channels, 4),
-            # nn.Dropout(p=dropout),
+            #nn.Dropout(p=dropout),
             nn.MaxPool2d(2)
         )
         for layer in range(1, depth):
@@ -82,7 +82,7 @@ class UpSample(nn.Module):
             self.layers.append(nn.ConvTranspose2d(2 ** (3 + layer), 2 ** (2 + layer),
                                                   2, stride=2))
             self.layers.append(DoubleConv(2 ** (3 + layer), 2 ** (2 + layer)))
-            # self.layers.append(nn.Dropout(p=dropout))
+            #self.layers.append(nn.Dropout(p=dropout))
         self.layers.append(nn.ConvTranspose2d(8, 4, 2, stride=2))
         self.layers.append(DoubleConv(8, 4))
         self.layers.append(nn.Conv2d(4, out_channels, kernel_size=1))
