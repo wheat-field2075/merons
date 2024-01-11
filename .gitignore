@@ -1,0 +1,8 @@
+**/__pycache__/
+**/.DS_Store
+**/.ipynb_checkpoints/
+active
+all_data/
+!all_data/*.json
+dataset/
+temp_ds/
