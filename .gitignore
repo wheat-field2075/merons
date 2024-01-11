@@ -1,5 +1,4 @@
-*/.DS_Store/
+**/__pycache__/
+**/.DS_Store/
 **/.ipynb_checkpoints/
-temp_dataset/
-__pycache__/
-.ipynb_checkpoints
+temp_ds/
