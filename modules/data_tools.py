@@ -1,3 +1,6 @@
+import cv2
+import scipy
+import torch
 import numpy as np
 from PIL import Image
 import albumentations as A
@@ -25,11 +28,6 @@ def open_image(image_path: str, reshape: bool=True) -> npt.NDArray[np.uint8]:
        length = np.min(image.shape)
        image = image[(image.shape[0]-length)//2:(image.shape[0]-length)//2+length, (image.shape[1]-length)//2:(image.shape[1]-length)//2+length]
    return image
-
-import torch
-import numpy as np
-import albumentations as A
-import numpy.typing as npt
 
 class MapDataset(torch.utils.data.Dataset):
     """
@@ -90,3 +88,36 @@ def transform_data(images: npt.NDArray[np.float32], masks: npt.NDArray[np.float3
     images, masks = np.moveaxis(images, -1, 1), np.moveaxis(masks, -1, 1)
     images, masks = torch.Tensor(images), torch.Tensor(masks)
     return images, masks
+
+def get_stats(prediction: npt.NDArray[np.float32], target: npt.NDArray[np.float32]) -> tuple[float, float, float]:
+    """
+    get_stats: calcualte precision, recall, and F1 score given a prediction and a target
+    
+    Inputs:
+        prediction (npt.NDArray[np.float32]): the model prediction as a numpy array
+        target (npt.NDArray[np.float32]): the target image as a numpy array
+    Outputs:
+        precision (float): the proportion of detections that are accurate
+        recall (float): the proportion of points of interest that the model correctly detected
+        f1 (float): the F1 score
+    """
+    # threshold images
+    prediction = cv2.threshold(prediction,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1].astype(np.uint8) * 255
+    target = cv2.threshold(target,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1].astype(np.uint8) * 255
+    
+    # get centroids for each component
+    p_centroids = cv2.connectedComponentsWithStats(prediction)[3][1:]
+    t_centroids = cv2.connectedComponentsWithStats(target)[3][1:]
+
+    # compute number of true positives using Hungarian matching
+    d_matrix = scipy.spatial.distance_matrix(p_centroids, t_centroids)
+    matches = scipy.optimize.linear_sum_assignment(d_matrix)
+
+    # calculate and return precision, recall, and F1 score
+    precision = len(matches) / len(p_centroids)
+    recall = len(matches) / len(t_centroids)
+    f1 = 2 * precision * recall / (precision + recall)
+    return precision, recall, f1
+    
+
+    

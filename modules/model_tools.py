@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 from typing import Union
+import numpy.typing as npt
 
 class DoubleConv(nn.Module):
     """
