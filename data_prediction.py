@@ -13,7 +13,11 @@ sys.path.append('./modules')
 from data_tools import open_image
 from model_tools import Hourglass
 
-# model initiazliation
+# make folder if necessary
+if os.path.exists('./all_data_pred') == False:
+    os.mkdir('./all_data_pred')
+
+# model initialization
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = Hourglass(depth=1).to(device)
 
@@ -57,21 +61,12 @@ for label in [1, 2]:
     annotations['annotations'] = annotation_list
     with open('./all_data_pred/annotations label={}.json'.format(label), 'w') as fp:
         json.dump(annotations, fp)
-    
-    print('Writing gif...')
-    temp = []
-    for result in results:
-        temp.append(Image.fromarray(result).convert('L'))
-        temp[0].save(os.path.join('./all_data_pred/', 'label={}.gif'.format(label)), save_all=True, append_images=temp[1:], optimize=False, duration=500, loop=0)
-    print('Writing npy...')
-    results = np.array(results)
-    np.save('./all_data_pred/label={}.npy'.format(label), results)
  
-    print('Writing gif...')
-    temp = []
-    for result in results_t:
-        temp.append(Image.fromarray(result).convert('L'))
-        temp[0].save(os.path.join('./all_data_pred/', 'label={}, thresh.gif'.format(label)), save_all=True, append_images=temp[1:], optimize=False, duration=500, loop=0)
+    # print('Writing gif...')
+    # temp = []
+    # for result in results_t:
+    #     temp.append(Image.fromarray(result).convert('L'))
+    #     temp[0].save(os.path.join('./all_data_predictions/', 'label={}'.format(label)), save_all=True, append_images=temp[1:], optimize=False, duration=500, loop=0)
     print('Writing npy...')
     results_t = np.array(results_t)
     np.save('./all_data_pred/label={}, thresh.npy'.format(label), results_t)

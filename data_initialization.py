@@ -20,6 +20,7 @@ for idx, sample in tqdm(enumerate(data)):
     low, high = np.percentile(sample, [5, 95])
     sample = 255 - ((np.clip(sample, low, high) - low) / (high - low) * 255).astype(np.uint8)
     sample = cv2.medianBlur(sample, 9)
+    # sample = sample[:1592, :1592]
     Image.fromarray(sample).convert('L').save(os.path.join(root_folder, data_name+' patch_{:03}.jpg'.format(idx)))
     if idx in include_list:
         Image.fromarray(sample).convert('L').save(os.path.join(target_folder, data_name+' patch_{:03}.jpg'.format(idx)))

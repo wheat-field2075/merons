@@ -4,5 +4,6 @@
 active
 all_data/
 !all_data/*.json
+all_data_pred/
 dataset/
 temp_ds/

@@ -101,6 +101,10 @@ def get_stats(prediction: npt.NDArray[np.float32], target: npt.NDArray[np.float3
         recall (float): the proportion of points of interest that the model correctly detected
         f1 (float): the F1 score
     """
+    # convert to uint8
+    prediction = (prediction * 255).astype(np.uint8)
+    target = (target * 255).astype(np.uint8)
+
     # threshold images
     prediction = cv2.threshold(prediction,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1].astype(np.uint8) * 255
     target = cv2.threshold(target,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)[1].astype(np.uint8) * 255
@@ -111,13 +115,14 @@ def get_stats(prediction: npt.NDArray[np.float32], target: npt.NDArray[np.float3
 
     # compute number of true positives using Hungarian matching
     d_matrix = scipy.spatial.distance_matrix(p_centroids, t_centroids)
-    matches = scipy.optimize.linear_sum_assignment(d_matrix)
+    row, col = scipy.optimize.linear_sum_assignment(d_matrix)
+    matches = [d_matrix[i, j] for i, j in zip(row, col) if d_matrix[i, j] < 70]
 
     # calculate and return precision, recall, and F1 score
     precision = len(matches) / len(p_centroids)
     recall = len(matches) / len(t_centroids)
-    f1 = 2 * precision * recall / (precision + recall)
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
     return precision, recall, f1
-    
+
 
     

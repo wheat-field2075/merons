@@ -73,10 +73,12 @@ def create_data(root_dir: str, parent_dir: str, json_name='annotations.json', la
             if annotation['category_id'] != label:
                 continue
             x, y, width, height = annotation['bbox']
+            # exclude if annotation is outside of mask
+            if y + height > image['height'] or x + width > image['width']:
+                continue
             center = np.array([int(y+height//2), int(x+width//2)])
             center = center + side_length//2
-            yy = np.expand_dims(np.linspace(-1 * side_length//2, side_length//2+1, 
-                                           num=side_length), 0)
+            yy = np.expand_dims(np.linspace(-1 * side_length//2, side_length//2+1, num=side_length), 0)
             xx = np.linspace(-1 * side_length//2, side_length//2+1, num=side_length)
             yy, xx = np.meshgrid(yy, xx)
             gaussian_kernel = (1/(2*np.pi*sigma**2))*np.exp(-1*(xx**2+yy**2)/(2*sigma**2))
